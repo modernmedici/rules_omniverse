@@ -10,6 +10,11 @@ Bazel installation. The verified measurement temporarily co-located them to
 remove network variability, but the rules and rc file use standard REAPI and do
 not require that topology.
 
+The recorded H200 timing comparison used the NativeLink 1.6.1 configuration
+under [`gpu`](gpu/README.md). A new NativeLink install should use the current
+release named there (v1.8.3 as of 2026-11-07), then revalidate. This page does
+not relabel the 1.6.1 timing record as a run on a later release.
+
 Run the declared active capability report against a prepared GPU worker:
 
 ```bash
