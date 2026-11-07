@@ -12,13 +12,19 @@ props into `bazel-bin/examples/isaac_sim/scene_based_sdg_out/`.
 
 ## Prerequisites
 
-- A Linux x86_64 worker with an NVIDIA GPU that has RT cores, for example an
-  L40S. A100 and H100 are not supported.
-- NVIDIA driver 595.58.03 or newer.
+- A Linux x86_64 worker with an NVIDIA GPU that has RT cores. The recorded run
+  used an L40S. [Isaac Sim 6.2 requirements](https://docs.isaacsim.omniverse.nvidia.com/6.2.0/installation/requirements.html)
+  state that GPUs without RT cores (A100, H100) are not supported. This
+  example does not add support for those GPUs.
+- NVIDIA driver. Isaac Sim 6.2 lists Linux driver 595.58.03 as a version it
+  was tested on, not as a published minimum. This example's platform and the
+  recorded L40S runs use 595.99.02. Set `driver` from `nvidia-smi`.
 - Docker with the NVIDIA container toolkit, usable by the user that runs
   actions: `docker run --rm --gpus 1 ubuntu nvidia-smi` must work.
 - NGC access: `docker login nvcr.io` (user `$oauthtoken`, password an NGC API
   key), then `docker pull "$(cat examples/isaac_sim/isaac_sim.pin)"` once.
+  The pin is image 6.2.0.1. That tag is the image this example uses, not a
+  minimum for every future image.
 
 ## Worker setup
 
@@ -33,7 +39,20 @@ export OMNI_CONTAINER_CACHE_MOUNTS=/data/isaac-sim/bazel-cache/main:/isaac-sim/.
 ```
 
 For example, on an L40S the first run fills about 2.1 GB, and later 10-frame
-runs take about 70 s instead of 300 s.
+runs take about 70 s instead of 300 s. That is a warm shader and asset cache
+during a run that still executes. It is not an action-cache hit, which skips
+the run, and it is not a guarantee for other workers. The mounts are not part
+of the action key. See the [limits](#limits).
+
+Install NativeLink from the current GitHub release,
+[v1.8.3](https://github.com/TraceMachina/nativelink/releases/tag/v1.8.3).
+On 2026-11-07, `releases/latest` resolved to that tag. The `query_cmd` notes
+below are for 1.8.3. The container tag is
+`ghcr.io/tracemachina/nativelink:v1.8.3`. There is no `:latest` tag. The
+[H200 example](../nativelink/gpu/README.md) records a separate NativeLink
+1.6.1 validation, including that run's image digest. Do not treat those
+1.6.1 digests as the 1.8.3 install, and do not relabel that H200 run as a
+test of 1.8.3.
 
 With NativeLink, set these in the worker's `local` block.
 `additional_environment` passes the mounts to each action, and `query_cmd`

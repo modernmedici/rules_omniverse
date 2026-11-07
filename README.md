@@ -1,57 +1,87 @@
 # rules_omniverse
 
-**Hermetic, cacheable, remotely executable builds for NVIDIA Omniverse — powered by [Bazel](https://bazel.build).**
+Bazel rules for [NVIDIA Omniverse](https://developer.nvidia.com/omniverse) and [Isaac Sim](https://docs.isaacsim.omniverse.nvidia.com/6.2.0/installation/requirements.html).
 
 [![Bazel Central Registry](https://img.shields.io/badge/BCR-rules__omniverse-brightgreen)](https://registry.bazel.build/modules/rules_omniverse)
 [![Release](https://github.com/TraceMachina/rules_omniverse/actions/workflows/release.yaml/badge.svg)](https://github.com/TraceMachina/rules_omniverse/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-`rules_omniverse` provides [Starlark](https://github.com/bazelbuild/starlark) rules and macros for building [NVIDIA Omniverse](https://developer.nvidia.com/omniverse) Kit applications, packaging [OpenUSD](https://openusd.org) assets, running GPU actions, validating scenes, and executing all of it on remote GPU workers — with Bazel's correctness guarantees intact.
+`rules_omniverse` is a set of [Starlark](https://github.com/bazelbuild/starlark) rules for three jobs:
 
-If you build robotics simulations, digital twins, synthetic data pipelines, or Kit extensions, this ruleset lets you treat Omniverse artifacts like any other build output: declared inputs, declared outputs, content-addressed caching, and reproducible execution placement.
+- Package [OpenUSD](https://openusd.org) assets, Kit extensions, and app bundles.
+- Build Omniverse Kit applications from a Kit SDK you install yourself.
+- Run headless Isaac Sim synthetic-data generation as one declared GPU action, on the local machine or on [NativeLink](https://nativelink.com) GPU workers.
 
-## Why
+Packaging, Kit launchers, and standalone OpenUSD validation stay usable without Isaac Sim and without a GPU. `isaac_sim_action` is separate: it is on `main`, and it is not in the published 0.3.0 release. See [Install](#install).
 
-Omniverse workflows are usually driven by imperative scripts: convert this asset, launch Kit here, run this simulation on whatever GPU is free. That works until you need to answer questions like:
+> **Licensing:** `rules_omniverse` is Apache-2.0 and does not download or bundle NVIDIA software. Packaging, metadata, and fake-adapter tests do not require accepting an NVIDIA license. Targets that launch Kit, Isaac Sim, or standalone NVIDIA SDKs require a user-supplied installation and remain subject to that software's current terms. See [NVIDIA Omniverse Licensing](https://docs.omniverse.nvidia.com/ov/latest/common/NVIDIA_Omniverse_License_Agreement.html).
 
-- *Which exact assets, SDK versions, and GPU environment produced this simulation result?*
-- *Why are we re-converting 40 GB of USD assets that haven't changed?*
-- *How do we run GPU validation in CI without hand-managing a fleet?*
+## Install
 
-Bazel already solves these problems for code. `rules_omniverse` extends the same model to Omniverse content and GPU workloads:
+Bazel 8 or newer. The module brings `rules_shell` and `platforms`. Consumers do not need to repeat those unless they use them directly.
 
-- **Bazel owns** declared inputs, outputs, caching, and execution placement.
-- **You own** NVIDIA SDK versions, Kit installations, container images, and GPU models.
-
-Nothing is downloaded or bundled on your behalf — the ruleset schedules the tools you select, so version choice and license acceptance stay at the execution-environment boundary where they belong.
-
-## Features at a glance
-
-- 📦 **Package without Kit** — bundle USD, MDL, textures, and extensions with zero NVIDIA dependencies; packaging and metadata tests run anywhere Bazel runs.
-- 🧩 **Kit application builds** — generate `.kit` apps and launchers from a locally registered Kit SDK toolchain.
-- ✅ **USD validation, profiling, conversion, and optimization** — via explicit, swappable adapter executables for NVIDIA's standalone USD tooling.
-- 🖥️ **GPU actions as build steps** — declare GPU model, count, and execution properties per target; run tools or full OCI containers on GPU workers.
-- 🤖 **Isaac Sim actions** — run headless Isaac Sim scripts, such as Replicator data generation, in a digest-pinned image as cacheable GPU actions that fail when the script crashes, even though Kit exits 0.
-- ☁️ **Remote execution ready** — designed for REAPI backends, with [NativeLink](https://nativelink.com) as the reference GPU scheduler.
-- 🔍 **Honest caching** — actions only share a cache identity when their SDK stacks are actually compatible.
-
-> **Prerequisites:** Bazel 8 or newer. Packaging and metadata tests need no Kit, CUDA toolkit, or GPU. Kit targets need an installed Kit SDK; NVIDIA USD rules need their selected adapter runtime. GPU actions and `gpu = True` targets need a registered NVIDIA GPU execution platform. Remote execution is optional.
-
-> **Licensing:** `rules_omniverse` is Apache-2.0 and does not download or bundle NVIDIA software. Packaging, metadata, and fake-adapter tests do not require accepting an NVIDIA license. Targets that launch Kit or standalone NVIDIA SDKs require a user-supplied installation and remain subject to that software's current terms. See [NVIDIA Omniverse Licensing](https://docs.omniverse.nvidia.com/ov/latest/common/NVIDIA_Omniverse_License_Agreement.html).
-
-## Getting started
-
-### Bzlmod
-
-Add the ruleset to `MODULE.bazel`:
+### Release 0.3.0
 
 ```starlark
 bazel_dep(name = "rules_omniverse", version = "0.3.0")
 ```
 
-The module brings its internal `rules_shell` and `platforms` dependencies. Consumers do not need to repeat them unless they use those rule sets directly.
+0.3.0 is the latest version on the [Bazel Central Registry](https://registry.bazel.build/modules/rules_omniverse) (0.1.0, 0.2.0, and 0.3.0). The published archive does not contain `isaac_sim_action` or `isaac_sim_platform`. Use 0.3.0 for packaging, Kit applications, OpenUSD adapters, and the GPU rules that shipped in that release. `MODULE.bazel` on the pinned commit below still reports `version = "0.3.0"`. No newer release is published.
 
-Build an asset bundle — no Kit installation required:
+### Unreleased Isaac Sim support
+
+`isaac_sim_action` and `isaac_sim_platform` were merged to `main` on 2026-11-06. Pin that commit with `git_override`. The override replaces the registry archive. The `bazel_dep` version stays `0.3.0` because that is the latest registry version and because the pinned commit's own `MODULE.bazel` still says `version = "0.3.0"`.
+
+```starlark
+bazel_dep(name = "rules_omniverse", version = "0.3.0")
+
+git_override(
+    module_name = "rules_omniverse",
+    remote = "https://github.com/TraceMachina/rules_omniverse.git",
+    commit = "8a41fa78b691424a4645a1b7450a1f29ed1ea66f",
+)
+```
+
+`8a41fa78b691424a4645a1b7450a1f29ed1ea66f` is upstream `main` at the merge of the Isaac Sim example. A checkout of this repository already contains the rules, so the quickstart below does not need the override. Other modules do.
+
+## Isaac Sim quickstart
+
+Target: `//examples/isaac_sim:scene_based_sdg`
+
+It runs NVIDIA's `scene_based_sdg` Replicator sample, which ships in the image, and writes `bazel-bin/examples/isaac_sim/scene_based_sdg_out/`. The generated config sets `num_frames: 10`. The target is tagged `manual`. No rendered sample image is stored in this repository.
+
+### Prerequisites
+
+From [`examples/isaac_sim`](examples/isaac_sim/README.md) and the [Isaac Sim 6.2 requirements](https://docs.isaacsim.omniverse.nvidia.com/6.2.0/installation/requirements.html):
+
+- Linux x86_64. The example platform constrains `@platforms//os:linux` and `@platforms//cpu:x86_64`. Isaac Sim's container is supported on Linux. This example does not cover the aarch64 DGX Spark build.
+- An NVIDIA GPU with RT cores. The recorded run used an L40S. Isaac Sim's requirements state that GPUs without RT cores (A100, H100) are not supported. A `gpu_model` string of `A100` on a generic `omni_gpu_action` does not make this RTX example supported there.
+- Driver. Isaac Sim 6.2 lists Linux driver **595.58.03** as a version it was tested on. The requirements footnote says those table entries are tested driver versions, not a published minimum. This example's platform, and the recorded L40S runs, use **595.99.02** (`driver = "595.99.02"` in `examples/isaac_sim/BUILD.bazel`). Set `driver` from `nvidia-smi --query-gpu=name,driver_version --format=csv,noheader`.
+- Docker with the NVIDIA container toolkit, for the user that runs actions: `docker run --rm --gpus 1 ubuntu nvidia-smi` must work.
+- NGC auth: `docker login nvcr.io` (user `$oauthtoken`, password an NGC API key), then pull the pin once.
+- Image **6.2.0.1**, digest-pinned. `examples/isaac_sim/isaac_sim.pin` and the target's `image` are both `nvcr.io/nvidia/isaac-sim:6.2.0.1@sha256:72d85e83fe76ac0dbe3cf6e77523c9ee9664db02c2e0fc92be35ee3c16cf3402`. 6.2.0.1 is the image this example uses. It is not a minimum for every future image.
+
+### Platform selection is not remote execution
+
+This command only registers the example execution platform and builds the target. It does not start NativeLink and it does not set `--remote_executor`. If the local machine satisfies the platform, Bazel runs the action locally.
+
+```bash
+bazel build \
+  --extra_execution_platforms=//examples/isaac_sim:isaac_sim_l40s_linux_x86_64 \
+  //examples/isaac_sim:scene_based_sdg
+```
+
+Remote execution is a separate setup: a NativeLink worker advertising `gpu_model`, `worker_runtime`, and `container-runtime`, plus `--remote_executor` and `--remote_cache`. The example README has that worker config, the cache-mount setup, the macOS client flags, and the troubleshooting table.
+
+Full example: [`examples/isaac_sim/README.md`](examples/isaac_sim/README.md).
+
+This documentation change did not run the GPU target.
+
+## Packaging, Kit, and OpenUSD
+
+These targets work with release 0.3.0. They do not need the `git_override`.
+
+### Asset bundle
 
 ```starlark
 load("@rules_omniverse//omniverse:defs.bzl", "omni_asset_bundle")
@@ -67,7 +97,7 @@ omni_asset_bundle(
 bazel build //:factory_assets
 ```
 
-That's it. The bundle is now a cached, content-addressed build artifact: unchanged assets are never repackaged, and any machine with access to the cache gets the result for free.
+Packaging and metadata tests need no Kit, CUDA toolkit, or GPU. Unchanged inputs are not repackaged when the action key matches.
 
 ### Kit toolchain
 
@@ -95,7 +125,7 @@ Without a registered toolchain, `OMNI_KIT`, or `kit` command, a Kit launcher exi
 
 ### Standalone NVIDIA USD adapters
 
-USD rules take an explicit executable adapter. This keeps SDK installation and version selection at the execution-environment boundary:
+USD rules take an explicit executable adapter. SDK installation and version selection stay at the execution-environment boundary:
 
 ```starlark
 load("@rules_omniverse//omniverse:defs.bzl", "omni_usd_optimize", "omni_usd_profile")
@@ -132,7 +162,7 @@ The profile rule measures a stage with Usd Optimize. It is distinct from `usd-pr
 
 ## GPU execution
 
-GPU model, count, execution properties, adapter, image, and runtime remain caller-controlled. The ruleset does not require an H200, a fixed SDK version, or a container digest.
+GPU model, count, execution properties, adapter, image, and runtime remain caller-controlled. The ruleset does not require an H200, a fixed SDK version, or a container digest. That freedom does not extend to the Isaac Sim RTX example above: Isaac Sim still requires a GPU with RT cores.
 
 ```starlark
 load("@rules_omniverse//omniverse:defs.bzl", "omni_gpu_action", "omni_gpu_platform")
@@ -160,11 +190,11 @@ omni_gpu_action(
 
 Passing `gpu = True` to a USD rule constrains that action to an NVIDIA GPU execution platform. It guarantees worker placement, not that the selected upstream operation uses CUDA. USD conversion, validation, and several Usd Optimize operations are CPU implementations even when they execute on a GPU host.
 
-Container actions additionally require `//omniverse/constraints:oci_container_runtime`. Image tags or digests, runtime command, network mode, shared memory, declared files/directories, and named worker environment forwarding are all configurable. Digest pinning is recommended for deployments that require stronger provenance, but it is not a ruleset requirement.
+Container actions additionally require `//omniverse/constraints:oci_container_runtime`. Image tags or digests, runtime command, network mode, shared memory, declared files and directories, and named worker environment forwarding are all configurable. Digest pinning is recommended for deployments that require stronger provenance, but it is not a ruleset requirement.
 
-## Isaac Sim
+## Isaac Sim rules
 
-`isaac_sim_action` runs a headless NVIDIA Isaac Sim script, such as a Replicator data generation script, in a pinned Isaac Sim image as one cacheable GPU container action. `isaac_sim_platform` declares the matching execution platform.
+`isaac_sim_action` runs a headless NVIDIA Isaac Sim script, such as a Replicator data generation script, in a pinned Isaac Sim image as one GPU container action. `isaac_sim_platform` declares the matching execution platform. Both require the [unreleased pin](#unreleased-isaac-sim-support) until a release contains them.
 
 ```starlark
 load("@rules_omniverse//omniverse:defs.bzl", "isaac_sim_action", "isaac_sim_platform")
@@ -195,7 +225,7 @@ isaac_sim_action(
 - **Every local file the scene uses is declared** in `scene` or `assets`. Before the script starts, the launcher computes the scene's dependencies with OpenUSD and fails the action naming every undeclared file, so a missing texture cannot produce a stale cache hit.
 - **The output is the `<name>_out` directory.** `{output}` is replaced by its path, and `{input:NAME}` by the path of the declared input named `NAME`. The action fails when the script raises or exits non-zero, even though Kit exits 0, and when the output is empty.
 
-See [`examples/isaac_sim`](examples/isaac_sim/README.md) for prerequisites, worker setup, running NVIDIA's `scene_based_sdg` sample, troubleshooting and limits.
+`network` defaults to `host`, so the container can reach online assets. Those assets are not part of the action key. See [Caches](#caches).
 
 ## Rules reference
 
@@ -212,7 +242,7 @@ See [`examples/isaac_sim`](examples/isaac_sim/README.md) for prerequisites, work
 | `omni_manifest_test` | Validate metadata without Kit |
 | `omni_kit_toolchain` | Expose installed Kit and `repo` executables |
 
-Packaging rules accept a configurable `packager` executable. Their default uses a `rules_shell` launcher; `//tools:package_omniverse_worker` is a worker-native alternative for cross-platform remote execution.
+Packaging rules accept a configurable `packager` executable. Their default uses a `rules_shell` launcher. `//tools:package_omniverse_worker` is a worker-native alternative for cross-platform remote execution.
 
 ### OpenUSD and GPU
 
@@ -226,18 +256,35 @@ Packaging rules accept a configurable `packager` executable. Their default uses 
 | `omni_container_gpu_action` | Execute a declared OCI GPU workload |
 | `omni_gpu_platform` | Declare GPU constraints and scheduler properties |
 | `omni_worker_script` | Upload a worker-side script without embedding the Bazel client's interpreter |
-| `isaac_sim_action` | Run a headless Isaac Sim script in a pinned image and capture its output directory |
-| `isaac_sim_platform` | Declare a GPU platform for Isaac Sim containers with driver-specific cache identity |
+| `isaac_sim_action` | Run a headless Isaac Sim script in a pinned image and capture its output directory. On `main`, not in 0.3.0. |
+| `isaac_sim_platform` | Declare a GPU platform for Isaac Sim containers with driver-specific cache identity. On `main`, not in 0.3.0. |
 
 USD arguments support `{src}`, `{out}`, and `{report}` placeholders. Additional files such as referenced layers, textures, profiles, or configuration must be declared through `data` so they participate in the action key.
 
-## Caching non-deterministic work
+## Caches
 
-Simulation and GPU workloads often do not produce bit-identical outputs run-to-run — physics engines, multi-threaded planners, and learned components all introduce variance. This is the hardest version of the caching problem, and the ruleset's answer is deliberate: **cache identity is exactly what you declare.**
+Two mechanisms get mixed up. One shortens a run that still executes. The other skips execution.
 
-A cache hit on an `omni_gpu_action` means Bazel is truthfully reporting that nothing in the action's declared inputs changed — same sources, same tool, same arguments, same declared environment, same execution platform. If your workload must produce a fresh result on every invocation — seeded scenario sampling, statistical coverage runs — then the seed or run identifier belongs in the declared inputs, and the cache behaves correctly by construction. Distinct runs get distinct action keys; identical declarations get honest reuse.
+### Warm shader and asset caches
 
-The same principle drives two rules stated elsewhere in this document: referenced USD dependencies must be declared explicitly so they participate in the action key, and worker SDK changes must be paired with a truthful `worker_runtime` execution property so incompatible stacks never share a cache identity. Reuse is aggressive precisely because it is never dishonest.
+Without `OMNI_CONTAINER_CACHE_MOUNTS`, each Isaac Sim action can download assets and compile shaders again. The example mounts four worker directories (asset cache, compute cache, Kit cache, and hub cache), owned by uid 1234, the image user. Isaac Sim still runs. The mounts are not action inputs, so they are not part of the Bazel action key. Changing a cached shader or a downloaded asset does not, by itself, change that key.
+
+The example README records one L40S observation: the first run filled about 2.1 GB, and later 10-frame runs took about 70 seconds instead of about 300 seconds. That is a recorded observation for that worker, not a performance guarantee. Local actions see only their declared environment, so a local build does not use those worker mounts unless the same paths are provided another way.
+
+### Action cache
+
+A Bazel or NativeLink action-cache hit means the declared action key matched a previous execution: sources, tool, arguments, declared environment, and execution platform. The executor returns the stored outputs and does not run Isaac Sim. That skip is not a faster Isaac Sim process, and it does not consult the shader cache, undeclared files, or online assets.
+
+For `omni_gpu_action` the same rule holds. If every invocation must be distinct, put the seed or run id in the declared inputs.
+
+### What is not in the key
+
+- Local `isaac_sim_action` runs mount whole source folders read-only, so a script can read undeclared files that are not in the action key. The launcher's OpenUSD dependency check names local scene dependencies missing from `scene` or `assets`. It does not see every file a script might open.
+- The `scene_based_sdg` sample loads its scene from NVIDIA's online assets, and `network` defaults to `host`. That online content is mutable and is not in the action key.
+- The worker shader and asset cache mounts are not in the action key.
+- Physics, multi-threaded planners, and learned components can vary across runs even when the declared key matches.
+
+A cache hit reports that the declared key matched. It does not prove a bit-identical or hermetic reproduction when those undeclared inputs move. This repository does not claim that Isaac Sim outputs are deterministic, that these actions are hermetic, or that a warm cache improves every workload.
 
 ## SDK runtime selection
 
@@ -253,54 +300,67 @@ These values belong in private worker configuration. Pair changes with a truthfu
 
 ## Remote execution with NativeLink
 
-[NativeLink](https://nativelink.com) is an open-source, Rust-based remote build cache and execution platform for build systems that speak the Remote Execution API. It is the reference backend for the GPU demos in this repository because it exposes a controllable REAPI scheduler, CAS, action cache, worker properties, and runtime environment. Other REAPI backends may work, but this repository does not claim equivalent worker provenance, customization, scheduling predictability, cache behavior, or GPU performance for them.
+[NativeLink](https://nativelink.com) is the reference backend for the GPU demos because it exposes a controllable REAPI scheduler, CAS, action cache, worker properties, and runtime environment. Other REAPI backends may work. This repository does not claim equivalent worker provenance, customization, scheduling predictability, cache behavior, or GPU performance for them.
 
-New to remote execution? Start here:
+### Which release to install
 
-- [What is remote execution?](https://docs.nativelink.com/faq/remote-execution/) — the concept in brief.
-- [NativeLink documentation](https://docs.nativelink.com/) — setup, configuration, and deployment.
-- [TraceMachina/nativelink](https://github.com/TraceMachina/nativelink) — source, releases, and prebuilt images.
+Install [NativeLink v1.8.3](https://github.com/TraceMachina/nativelink/releases/tag/v1.8.3), published 2026-10-28. On 2026-11-07, [releases/latest](https://github.com/TraceMachina/nativelink/releases/latest) redirected to that tag. The container tag `ghcr.io/tracemachina/nativelink:v1.8.3` exists. The registry has no `ghcr.io/tracemachina/nativelink:latest` tag.
 
-See [`examples/nativelink/gpu`](examples/nativelink/gpu/README.md) for worker configuration, platforms, and real-versus-fake hardware preflight, including an H200 `.bazelrc` example and a hardware preflight script.
+The [NativeLink quickstart](https://docs.nativelink.com/getting-started/quickstart) still shows `ghcr.io/tracemachina/nativelink:v1.6.5` in its sample commands. That tag exists. It is not the latest release. Use v1.8.3 for a new install. Use the 1.6.1 digests in [`examples/nativelink/gpu`](examples/nativelink/gpu/README.md) only when reproducing that recorded H200 configuration.
+
+Docs:
+
+- [NativeLink documentation](https://docs.nativelink.com/)
+- [Quickstart](https://docs.nativelink.com/getting-started/quickstart)
+- [From cache to execution](https://docs.nativelink.com/remote-execution/from-cache-to-execution) (the old `/faq/remote-execution/` URL redirects here)
+- [TraceMachina/nativelink](https://github.com/TraceMachina/nativelink)
+
+### Which version was actually tested
+
+These labels are not interchangeable:
+
+- The Isaac Sim example describes NativeLink **1.8.3** worker behavior, including `query_cmd` running without a shell or `PATH`.
+- The H200 reference under [`examples/nativelink/gpu`](examples/nativelink/gpu/README.md) was validated with NativeLink **1.6.1**, including that run's image digest and binary digest. Leave that page labeled 1.6.1. Revalidate before using its files with another version.
 
 ## Testing
 
 The `fake_gpu` fixtures under `//tests` and `//e2e/bzlmod` verify Starlark analysis, constraints, arguments, declared artifacts, and external-module use without reserving a GPU. They do not claim CUDA or SDK execution.
 
-Real-hardware coverage is separate. The primary reference bench is the H200 series, currently exercised with NativeLink 1.6.1, CUDA-enabled PyTorch, `ovphysx`, and standalone NVIDIA USD tooling. H200 is a tested bench, not a ruleset requirement. The Isaac Sim rules are tested on an L40S with Isaac Sim 6.2.0.1 and NativeLink 1.8.3.
+Real-hardware coverage is separate, and the recorded versions stay attached to the runs that produced them:
+
+- The H200 reference bench was exercised with NativeLink **1.6.1**, CUDA-enabled PyTorch, `ovphysx`, and standalone NVIDIA USD tooling. H200 is a tested bench for that record, not a ruleset requirement, and that record is not a test of NativeLink 1.8.3.
+- The Isaac Sim rules were tested on an L40S with Isaac Sim **6.2.0.1**, driver **595.99.02**, and NativeLink **1.8.3**.
 
 ```sh
 bazel test //...
 ```
 
-The standalone Bzlmod consumer is under `e2e/bzlmod`.
+The standalone Bzlmod consumer is under `e2e/bzlmod`. It depends on release 0.3.0 and does not load `isaac_sim_action`.
 
 ## Relationship to `rules_cuda`
 
-[`rules_cuda`](https://github.com/bazel-contrib/rules_cuda) is an optional companion, not a dependency. Use it when a target must compile or link CUDA sources with NVCC or Clang. `rules_omniverse` schedules prebuilt SDK tools and containers, so requiring CUDA compilation toolchains would burden users who only package Kit/OpenUSD content. A `rules_cuda` binary can be the `tool` of an `omni_gpu_action`.
+[`rules_cuda`](https://github.com/bazel-contrib/rules_cuda) is an optional companion, not a dependency. Use it when a target must compile or link CUDA sources with NVCC or Clang. `rules_omniverse` schedules prebuilt SDK tools and containers, so requiring CUDA compilation toolchains would burden users who only package Kit and OpenUSD content. A `rules_cuda` binary can be the `tool` of an `omni_gpu_action`.
 
 ## Repository layout
 
 Consumers should load public rules from `//omniverse:defs.bzl`:
 
-- `omniverse/private/gpu.bzl` — GPU actions, containers, platforms, and workers.
-- `omniverse/private/isaac_sim.bzl` — Isaac Sim actions and platforms.
-- `omniverse/private/usd.bzl` — adapter-based USD actions.
-- `omniverse/providers.bzl` — typed providers returned by public rules.
-- `tools/` — built-in packaging and real NVIDIA adapter entry points.
-- `examples/` — public, reproducible rule demonstrations.
+- `omniverse/private/gpu.bzl`: GPU actions, containers, platforms, and workers.
+- `omniverse/private/isaac_sim.bzl`: Isaac Sim actions and platforms.
+- `omniverse/private/usd.bzl`: adapter-based USD actions.
+- `omniverse/providers.bzl`: typed providers returned by public rules.
+- `tools/`: built-in packaging and real NVIDIA adapter entry points.
+- `examples/`: public rule demonstrations, including `examples/isaac_sim` and `examples/nativelink`.
 
 The private implementation follows established Bazel rule-set conventions: declared inputs and outputs, `cfg = "exec"` tools, providers, constraints, execution properties, and `ctx.actions.run`.
 
 ## Known boundaries
 
-We prefer to state limits explicitly rather than let you discover them:
-
 - Kit execution and Kit `repo` publishing require an installed Kit SDK.
 - Standalone NVIDIA libraries must be installed in the selected worker runtime.
 - Referenced USD dependencies must be declared explicitly for correct caching.
-- An `isaac_sim_action` script must run in the launcher's process and must not exec into another program (`os.execv` and friends); the run then fails with `no completion report`. Errors Kit catches and only logs, and exceptions the script catches itself, are not detected.
-- Local `isaac_sim_action` runs mount whole source folders read-only, so a script can read undeclared files that are not in the cache key. Online content and the worker's cache mounts are not in the cache key either. See the [Isaac Sim limits](examples/isaac_sim/README.md#limits).
+- An `isaac_sim_action` script must run in the launcher's process and must not exec into another program (`os.execv` and friends). The run then fails with `no completion report`. Errors Kit catches and only logs, and exceptions the script catches itself, are not detected.
+- Local `isaac_sim_action` runs can read undeclared files, online assets can change under a stable action key, and worker cache mounts are outside the key. See [Caches](#caches) and the [Isaac Sim limits](examples/isaac_sim/README.md#limits).
 - Streaming services and mutable search endpoints are runtime orchestration, not hermetic cacheable transformations.
 
 ## Contributing
@@ -309,6 +369,6 @@ See [RELEASING.md](RELEASING.md) for the release process and [CHANGELOG.md](CHAN
 
 ## License
 
-Apache-2.0. NVIDIA Omniverse, Kit, and USD tooling remain subject to their own license terms.
+Apache-2.0. NVIDIA Omniverse, Kit, Isaac Sim, and USD tooling remain subject to their own license terms.
 
-(c) Trace Machina Inc 2026. 
+(c) Trace Machina Inc 2026.
