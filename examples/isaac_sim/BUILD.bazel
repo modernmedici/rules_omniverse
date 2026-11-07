@@ -40,6 +40,7 @@ isaac_sim_action(
 
 exports_files([
     "README.md",
+    "isaac.bazelrc.example",
     "isaac_sim.pin",
     "run_scene_based_sdg.py",
 ])

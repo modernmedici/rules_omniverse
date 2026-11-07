@@ -7,6 +7,7 @@ props into `bazel-bin/examples/isaac_sim/scene_based_sdg_out/`.
 | File | Role |
 | --- | --- |
 | `BUILD.bazel` | The platform, a genrule that writes the sample's config (`num_frames: 10`, output in `scene_based_sdg_out`), and the target, which passes it as `--config {input:scene_based_sdg.yaml}` |
+| `isaac.bazelrc.example` | NativeLink flags for `--config=isaac`. Copy it to a private rc file. It does not run by itself |
 | `isaac_sim.pin` | The image, `nvcr.io/nvidia/isaac-sim:6.2.0.1` pinned by digest; the target's `image` must equal it |
 | `run_scene_based_sdg.py` | Runs the sample from the image in the same process |
 
@@ -120,22 +121,18 @@ bazel build \
 ```
 
 Local actions see only their declared environment, so local runs don't use
-the worker's cache mounts. With NativeLink, put this in a private rc file.
-`--remote_executor` points at the scheduler's execution endpoint and
-`--remote_cache` at the CAS endpoint, which may be different ports:
+the worker's cache mounts. Cancelling a local build leaves the container
+running and its output owned by uid 1234. See
+[Troubleshooting](#troubleshooting).
 
-```bash
-build:isaac --remote_executor=grpc://SCHEDULER_HOST:50052
-build:isaac --remote_cache=grpc://CAS_HOST:50051
-build:isaac --remote_local_fallback=false
-build:isaac --remote_timeout=600
-build:isaac --extra_execution_platforms=//examples/isaac_sim:isaac_sim_l40s_linux_x86_64
-```
-
-Then run `bazel --bazelrc=/absolute/path/private-isaac.bazelrc build
---config=isaac //examples/isaac_sim:scene_based_sdg`. From macOS, also add
-`build:isaac --cpu=k8 --host_cpu=k8`; without both, the client computes a
-different action key than the Linux worker and never gets a cache hit.
+Remote execution uses [`isaac.bazelrc.example`](isaac.bazelrc.example). Copy
+it to a private rc file, replace `SCHEDULER_HOST` and `CAS_HOST`, and run
+`bazel --bazelrc=/absolute/path/private-isaac.bazelrc build --config=isaac
+//examples/isaac_sim:scene_based_sdg`. `--remote_executor` is the scheduler
+endpoint and `--remote_cache` is the CAS endpoint. The ports may differ. On
+macOS, uncomment both `k8` lines in that file. Without both, the client
+computes a different action key than the Linux worker and never gets a cache
+hit.
 
 ## Updating the driver
 

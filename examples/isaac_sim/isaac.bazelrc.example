@@ -1,0 +1,23 @@
+# Remote execution for //examples/isaac_sim:scene_based_sdg.
+# Copy this file to a private rc path and replace SCHEDULER_HOST and CAS_HOST.
+# Bazel reads it only when passed as a startup option:
+#   bazel --bazelrc=/absolute/path/private-isaac.bazelrc build \
+#     --config=isaac //examples/isaac_sim:scene_based_sdg
+#
+# --extra_execution_platforms selects the platform. The --remote_* flags below
+# are what send the action to NativeLink. --remote_executor is the scheduler
+# execution endpoint. --remote_cache is the CAS endpoint. The ports may differ.
+#
+# The checked-in platform is L40S and driver 595.99.02. Set gpu_model and
+# driver in BUILD.bazel from nvidia-smi before expecting a remote match.
+
+build:isaac --remote_executor=grpc://SCHEDULER_HOST:50052
+build:isaac --remote_cache=grpc://CAS_HOST:50051
+build:isaac --remote_local_fallback=false
+build:isaac --remote_timeout=600
+build:isaac --extra_execution_platforms=//examples/isaac_sim:isaac_sim_l40s_linux_x86_64
+
+# A macOS client needs both lines. Without them the client computes a
+# different action key than the Linux worker and never gets a cache hit.
+# build:isaac --cpu=k8
+# build:isaac --host_cpu=k8

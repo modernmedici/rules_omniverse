@@ -65,22 +65,27 @@ streaming path.
 
 ## NativeLink
 
+### Install v1.8.3
+
 For a new install, use the current NativeLink release,
 [v1.8.3](https://github.com/TraceMachina/nativelink/releases/tag/v1.8.3).
 On 2026-11-07,
 [releases/latest](https://github.com/TraceMachina/nativelink/releases/latest)
 resolved to that tag. The container tag
-`ghcr.io/tracemachina/nativelink:v1.8.3` exists. There is no
+`ghcr.io/tracemachina/nativelink:v1.8.3` exists. The registry has no
 `ghcr.io/tracemachina/nativelink:latest` tag. The public
 [quickstart](https://docs.nativelink.com/getting-started/quickstart) still
-shows image tag `v1.6.5` in its sample commands. That sample is not the
-latest release.
+shows image tag `v1.6.5` in its sample commands. That sample is an older
+release.
+
+Installing v1.8.3 does not turn the files in this directory into a test of
+1.8.3. Revalidate `nativelink-h200.json5` before using it with a version
+other than the recorded one below.
+
+### Reproduce the recorded 1.6.1 run
 
 This directory's configuration and recorded H200 evidence were validated
-against NativeLink 1.6.1. The digests below belong to that 1.6.1 run. They
-are not the 1.8.3 release, and this page does not treat that run as a test
-of a later version. Revalidate the configuration before substituting another
-version or image digest.
+against NativeLink 1.6.1. The digests below belong to that 1.6.1 run.
 
 The verified 1.6.1 image and binary digests are:
 
@@ -91,7 +96,7 @@ binary sha256: f92d7a326ecf294ebd300f4d1e66721207404e753922852aa181e0c88e8fc98e
 
 The 1.6.1 binary recorded for this configuration reports `nativelink 1.6.1`.
 
-Set `NL_NVME_ROOT`, start that NativeLink binary with
+To reproduce that run, set `NL_NVME_ROOT`, start that 1.6.1 binary with
 `nativelink-h200.json5`, copy `h200.bazelrc.example` into a private ignored rc
 file, and replace `H200_HOST` there.
 

@@ -63,7 +63,11 @@ From [`examples/isaac_sim`](examples/isaac_sim/README.md) and the [Isaac Sim 6.2
 
 ### Platform selection is not remote execution
 
-This command only registers the example execution platform and builds the target. It does not start NativeLink and it does not set `--remote_executor`. If the local machine satisfies the platform, Bazel runs the action locally.
+The checked-in platform is L40S with driver 595.99.02. Set `gpu_model` and `driver` in `examples/isaac_sim/BUILD.bazel` from `nvidia-smi --query-gpu=name,driver_version --format=csv,noheader` before a remote worker can match. Until those values match, remote scheduling fails with `FAILED_PRECONDITION`.
+
+This command registers that platform and builds the target on the local machine when the machine can run it. It does not start NativeLink, set `--remote_executor`, or use `OMNI_CONTAINER_CACHE_MOUNTS`.
+
+Cancelling this local build leaves the Isaac Sim container running and its output owned by uid 1234, so a later `bazel clean` or rebuild can fail with `fchmod ... Operation not permitted`. Recovery is in the [example troubleshooting](examples/isaac_sim/README.md#troubleshooting) and [issue 13](https://github.com/TraceMachina/rules_omniverse/issues/13).
 
 ```bash
 bazel build \
@@ -71,11 +75,9 @@ bazel build \
   //examples/isaac_sim:scene_based_sdg
 ```
 
-Remote execution is a separate setup: a NativeLink worker advertising `gpu_model`, `worker_runtime`, and `container-runtime`, plus `--remote_executor` and `--remote_cache`. The example README has that worker config, the cache-mount setup, the macOS client flags, and the troubleshooting table.
+Remote execution is [`examples/isaac_sim/isaac.bazelrc.example`](examples/isaac_sim/isaac.bazelrc.example). Copy it to a private rc file, replace the hosts, and pass `--bazelrc` plus `--config=isaac`. The example README has the worker config, cache mounts, and troubleshooting table.
 
 Full example: [`examples/isaac_sim/README.md`](examples/isaac_sim/README.md).
-
-This documentation change did not run the GPU target.
 
 ## Packaging, Kit, and OpenUSD
 
